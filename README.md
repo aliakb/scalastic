@@ -1,13 +1,21 @@
-# What is Scalastic?
+# Scalastic
 
-Scalastic is a library that organizes your Elasticsearch documents into partitions, as recommended in TODO:HERE. A partition provides methods for indexing documents (adding or updating), searching for them, and deleting them. Partitions are isolated: documents stored in one partition are not visible in other partitions.
+Scalastic is a library that organizes your Elasticsearch documents into partitions, as recommended [here](https://www.elastic.co/guide/en/elasticsearch/guide/current/faking-it.html). A partition provides methods for indexing documents (adding or updating), searching for them, and deleting them. Partitions are isolated: documents stored in one partition are not visible in other partitions.
 
-Initially your partition lives in a single index; however, but as it grows, you may extend it to another index, redirecting all new documents there and keeping old documents available for searches. Partitions use Elasticsearch aliases; a partition with id 1 will create alias "scalastic_1_index" for indexing operations, and "scalastic_1_search" for searching. The index alias always points to a single index; the search one may span across multiple indices, with the most recent ones at the top. 
+Initially your partition lives in a single index; however, but as it grows, you may extend it to another index, redirecting all new documents there and keeping all documents from the original index available for searches. Partitions use Elasticsearch's filtered aliases; a partition with id 1 will create alias "scalastic_1_index" for indexing, and "scalastic_1_search" for searching. The index alias always points to a single index; the search one may span across multiple indices, with the most recent ones at the top. 
 
 Scalastic relies on the field "scalastic_partition_id" of type "long" to determine partition the document belongs to. The search alias for a partition has a term filter that returns only document belonging to that partition. The index alias, however, does not have a filter; if you're inserting documents into that alias directly (and not using Scalastic API), it becomes your responsibility to set this field to the correct value (which is partition id) for your document to show up in the partition. Note that delete API uses search alias to locate and delete documents to allow deletion of documents created in older indices.
 
 ## Configuring the environment for Scalastic
-TODO: document configuring indices to be used with scalastic
+Every new index must be prepared before it can be used with scalastic:
+
+```ruby
+es_client = Elasticsearch::Client.new
+es_client.indices.create index: 'my_index'
+es_client.partitions.prepare index: 'my_index'
+```
+
+Preparing an index creates mappings for fields required by Scalastic. Note that preparing uses the _default_ mapping, which means that already existing document types will not be affected. Because of that **you should always prepare new indices before using them**.
 
 ## Installation
 
@@ -27,7 +35,7 @@ Or install it yourself as:
 
 ## Usage
 
-Scalastic extends functionality of the Elasticsearch client by adding a property called "partitions", which represents a gateway to partitions. 
+Scalastic extends functionality of the Elasticsearch client by adding a property called "partitions" to the Elasticsearch client. That property serves as a gateway to all partitions' functionality.
 
 ### Creating a partition
 ```ruby
@@ -134,7 +142,7 @@ raise "Expected 1 document, got #{count}" unless count == 1
 
 ## Development
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake false` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
 
 To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
 
@@ -146,24 +154,3 @@ Bug reports and pull requests are welcome on GitHub at https://github.com/[USERN
 ## License
 
 The gem is available as open source under the terms of the [MIT License](http://opensource.org/licenses/MIT).
-
-
-
-
-
-
-
-
-Partition has an id.
-Partition can span across 1 or more indices
-Two endpoints: index and search
-Index endpoint: adding documents
-Search endpoint: searching, deleting
-
-
-# Scalastic
-
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/scalastic`. To experiment with that code, run `bin/console` for an interactive prompt.
-
-TODO: Delete this and the text above, and describe your gem
-
