@@ -51,10 +51,52 @@ module Scalastic
       all_aliases.any?{|_index, data| data['aliases'].any?}
     end
 
-    #TODO: add bulk
+    def bulk(args)
+      body = args.clone[:body] || raise(ArgumentError, 'Missing required argument :body')
+      index = config.index_endpoint(id)
+      selector = config.partition_selector
+
+      new_ops = body.map{|entry| [operation_name(entry), entry]}.reduce([]){|acc, op| acc << [op.first, update_entry(acc, *op)]; acc}
+      args[:body] = new_ops.map{|_op, entry| entry}
+
+      es_client.bulk(args)
+    end
 
     def inspect
       "ES partition #{id}"
+    end
+
+    private
+
+    def operation_name(entry)
+      [:create, :index, :update, :delete].find{|name| entry.has_key?(name)}
+    end
+
+    def update_entry(acc, operation, entry)
+      if (operation)
+        op_data = entry[operation]
+        op_data[:_index] = config.index_endpoint(id)
+        if (op_data[:data])
+          if (operation == :update)
+            op_data[:data][:doc] ||= {}
+            op_data[:data][:doc][config.partition_selector] = id
+          else
+            op_data[:data][config.partition_selector] = id
+          end
+        end
+      else
+        parent = acc.last
+        # A previous record must be create/index/update/delete
+        raise(ArgumentError, "Unexpected entry: #{entry}") unless parent && parent.first
+
+        if (parent.first == :update)
+          entry[:doc] ||= {}
+          entry[:doc][config.partition_selector] = id
+        else
+          entry[config.partition_selector] = id
+        end
+      end
+      entry
     end
   end
 end

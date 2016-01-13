@@ -9,7 +9,7 @@ module Scalastic
 
     def initialize
       @partition_prefix = "scalastic"
-      @partition_selector = "scalastic_partition_id"
+      @partition_selector = :scalastic_partition_id
     end
 
     def index_endpoint(partition_id)
