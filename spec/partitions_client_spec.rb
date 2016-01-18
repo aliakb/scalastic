@@ -67,7 +67,7 @@ describe Scalastic::PartitionsClient do
       it 'creates a search alias' do
         expect(indices_client).to receive(:update_aliases).once do |args|
           actions = args[:body][:actions]
-          expect(actions).to include(add: {alias: "scalastic_#{partition_id}_search", index: index, filter: {term: {'scalastic_partition_id' => partition_id}}})
+          expect(actions).to include(add: {alias: "scalastic_#{partition_id}_search", index: index, filter: {term: {:scalastic_partition_id => partition_id}}})
         end
         client.create(index: index, id: partition_id)
       end
@@ -87,7 +87,7 @@ describe Scalastic::PartitionsClient do
       it 'creates a search alias' do
         expect(indices_client).to receive(:update_aliases).once do |args|
           actions = args[:body][:actions]
-          expect(actions).to include(add: {alias: "scalastic_#{partition_id}_search", index: index, routing: routing, filter: {term: {'scalastic_partition_id' => partition_id}}})
+          expect(actions).to include(add: {alias: "scalastic_#{partition_id}_search", index: index, routing: routing, filter: {term: {:scalastic_partition_id => partition_id}}})
         end
         client.create(index: index, id: partition_id, routing: routing)
       end

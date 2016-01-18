@@ -11,7 +11,7 @@ describe Scalastic::Config do
     end
 
     it 'has correct partition_selector' do
-      expect(config.partition_selector).to eq 'scalastic_partition_id'
+      expect(config.partition_selector).to eq :scalastic_partition_id
     end
   end
 
@@ -23,7 +23,7 @@ describe Scalastic::Config do
 
   describe '#partition_selector' do
     it 'returns correct value' do
-      expect(config.partition_selector).to eq 'scalastic_partition_id'
+      expect(config.partition_selector).to eq :scalastic_partition_id
     end
   end
 

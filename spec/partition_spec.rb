@@ -238,4 +238,85 @@ describe Scalastic::Partition do
       end
     end
   end
+
+  describe '.bulk' do
+    let(:input) {{body: [{index: {_id: 123, _type: 'test_type', data: {}}}]}}
+    let(:endpoint) {config.index_endpoint(partition.id)}
+    let(:partition_selector) {config.partition_selector}
+
+    before(:each) do
+      allow(es_client).to receive(:bulk)
+    end
+
+    it 'throws without :body' do
+      expect{partition.bulk(key: 'value')}.to raise_error(ArgumentError, 'Missing required argument :body')
+    end
+
+    it 'calls ES' do
+      expect(es_client).to receive(:bulk).once
+      partition.bulk(input)
+    end
+
+    it 'returns values from ES' do
+      expected_results = double('results')
+      allow(es_client).to receive(:bulk).and_return(expected_results)
+
+      expect(partition.bulk(input)).to eq expected_results
+    end
+
+    context 'creating' do
+      let(:input) {{body: [{create: {_type: 'test', _id: 1, data: {field1: 'value1'}}}, {create: {_type: 'test', _id: 2}}, {field2: 'value2'}]}}
+
+      it 'calls ES with correct arguments' do
+        expected_es_input = {body: [
+          {create: {_index: endpoint, _type: 'test', _id: 1, data: {field1: 'value1', partition_selector => partition.id}}},
+          {create: {_index: endpoint, _type: 'test', _id: 2}},
+          {field2: 'value2', partition_selector => partition.id}
+        ]}
+        expect(es_client).to receive(:bulk).with(expected_es_input)
+        partition.bulk(input)
+      end
+    end
+
+    context 'indexing' do
+      let(:input) {{body: [{index: {_type: 'test', _id: 1, data: {field1: 'value1'}}}, {index: {_type: 'test', _id: 2}}, {field2: 'value2'}]}}
+
+      it 'calls ES with correct arguments' do
+        expected_es_input = {body: [
+          {index: {_index: endpoint, _type: 'test', _id: 1, data: {field1: 'value1', partition_selector => partition.id}}},
+          {index: {_index: endpoint, _type: 'test', _id: 2}},
+          {field2: 'value2', partition_selector => partition.id}
+        ]}
+        expect(es_client).to receive(:bulk).with(expected_es_input)
+        partition.bulk(input)
+      end
+    end
+
+    context 'updating' do
+      let(:input) {{body: [{update: {_type: 'test', _id: 1, data: {doc: {field1: 'value1'}}}}, {update: {_type: 'test', _id: 2}}, {doc: {field2: 'value2'}}]}}
+
+      it 'calls ES with correct arguments' do
+        expected_es_input = {body: [
+          {update: {_index: endpoint, _type: 'test', _id: 1, data: {doc: {field1: 'value1', partition_selector => partition.id}}}},
+          {update: {_index: endpoint, _type: 'test', _id: 2}},
+          {doc: {field2: 'value2', partition_selector => partition.id}}
+        ]}
+        expect(es_client).to receive(:bulk).with(expected_es_input)
+        partition.bulk(input)
+      end
+    end
+
+    context 'deleting' do
+      let(:input) {{body: [{delete: {_type: 'test', _id: 1}}, {delete: {_type: 'test', _id: 2}}]}}
+
+      it 'calls ES with correct arguments' do
+        expected_es_input = {body: [
+          {delete: {_index: endpoint, _type: 'test', _id: 1}},
+          {delete: {_index: endpoint, _type: 'test', _id: 2}},
+        ]}
+        expect(es_client).to receive(:bulk).with(expected_es_input)
+        partition.bulk(input)
+      end
+    end
+  end
 end
