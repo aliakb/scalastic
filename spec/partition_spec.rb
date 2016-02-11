@@ -6,6 +6,8 @@ describe Scalastic::Partition do
   let(:id) {[1, 2].sample}
 
   let(:partition) {described_class.new(es_client, config, id)}
+  let(:index_endpoint) {config.index_endpoint(id)}
+  let(:search_endpoint) {config.search_endpoint(id)}
 
   describe '.new' do
     it 'rejects nil ES client' do
@@ -317,6 +319,35 @@ describe Scalastic::Partition do
         expect(es_client).to receive(:bulk).with(expected_es_input)
         partition.bulk(input)
       end
+    end
+  end
+
+  describe '#delete_by_query' do
+    let(:input) {{body: {query: {term: {field: 'value'}}}}}
+    let(:search_result) {{'_scroll_id' => 'scroll id 2'}}
+    let(:scroll_results) do
+      [
+        {'_scroll_id' => 'scroll id 2', 'hits' => {'total' => 2, 'hits' => [{'_index' => 'index1', '_id' => '1', '_type' => 'type1'}]}},
+        {'_scroll_id' => 'scroll id 3', 'hits' => {'total' => 2, 'hits' => [{'_index' => 'index2', '_id' => '2', '_type' => 'type2'}]}},
+        {'_scroll_id' => 'scroll id 4', 'hits' => {'total' => 2, 'hits' => []}}
+      ]
+    end
+
+    before(:each) do
+      allow(es_client).to receive(:search).and_return(search_result)
+      allow(es_client).to receive(:scroll).and_return(*scroll_results)
+      allow(es_client).to receive(:bulk)
+    end
+
+    it 'deletes all documents' do
+      expect(es_client).to receive(:bulk).ordered.with(body: [{delete: {_index: 'index1', _type: 'type1', _id: '1'}}])
+      expect(es_client).to receive(:bulk).ordered.with(body: [{delete: {_index: 'index2', _type: 'type2', _id: '2'}}])
+      partition.delete_by_query(input)
+    end
+
+    it 'performs a search' do
+      expect(es_client).to receive(:search).once.with(input.merge(index: search_endpoint, search_type: 'scan', scroll: '1m', size: 500, fields: [])).and_return(search_result)
+      partition.delete_by_query(input)
     end
   end
 end
