@@ -62,6 +62,18 @@ module Scalastic
       es_client.bulk(args)
     end
 
+    def delete_by_query(args)
+      args = args.merge(index: config.search_endpoint(id), search_type: 'scan', scroll: '1m', size: 500, fields: [])
+      results = es_client.search(args)
+      loop do
+        scroll_id = results['_scroll_id']
+        results = es_client.scroll(scroll_id: scroll_id, scroll: '1m')
+        ops = results['hits']['hits'].map{|h| delete_op(h)}
+        break if ops.empty?
+        es_client.bulk(body: ops)
+      end
+    end
+
     def inspect
       "ES partition #{id}"
     end
@@ -97,6 +109,10 @@ module Scalastic
         end
       end
       entry
+    end
+
+    def delete_op(hit)
+      {delete: {_index: hit['_index'], _type: hit['_type'], _id: hit['_id']}}
     end
   end
 end

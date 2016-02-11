@@ -196,6 +196,29 @@ count = partition.search(search_type: 'count')['hits']['total']
 raise 'Some documents were not removed' unless count == 0
 ```
 
+### Deleting by query
+Scalastic partitions support delete_by_query, but because it is no longer available in Elasticsearch core, we use our own implementation which uses scan/scroll searches and bulk operations for deletion.
+```ruby
+client = Elasticsearch::Client.new
+partitions = client.partitions
+
+client.indices.create(index: 'delete_by_query')
+partitions.prepare_index(index: 'delete_by_query')
+
+p = partitions.create(index: 'delete_by_query', id: 1)
+p.index(id: 1, type: 'test')
+p.index(id: 2, type: 'test')
+p.index(id: 3, type: 'test')
+client.indices.flush(index: 'delete_by_query')
+
+p.delete_by_query(body:{query:{terms:{_id: [1,3]}}})
+client.indices.flush(index: 'delete_by_query')
+
+expected_hits = [{'_index' => 'delete_by_query', '_type' => 'test', '_id' => '2', '_score' => 1.0, '_source' => {'scalastic_partition_id' => 1}}]
+actual_hits = p.search['hits']['hits']
+raise "Unexpected results!: #{actual_hits}" unless actual_hits == expected_hits
+```
+
 ### Notes
 * Indices must be *prepared* before they can be used by Scalastic by calling "prepare" on the partitions client; doing so will create critical field mappings. Each index must be prepared only once. 
 * All hash keys in arguments must be symbols; using anything else may result in unexpected behavior.
