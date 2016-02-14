@@ -33,6 +33,11 @@ module Scalastic
       es_client.search(args)
     end
 
+    def get(args)
+      args = args.merge(index: config.search_endpoint(id))
+      es_client.get(args)
+    end
+
     def index(args)
       args = {body: {}}.merge(args)
       args[:body][config.partition_selector.to_sym] = id

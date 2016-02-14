@@ -117,6 +117,26 @@ describe Scalastic::Partition do
     end
   end
 
+  describe '#get' do
+    let(:endpoint) {config.search_endpoint(id)}
+    let(:get_results) {double('get results')}
+    let(:document_id) {[10,20].sample}
+    let(:document_type) {'document_type'}
+
+    before(:each) do
+      allow(es_client).to receive(:get).and_return(get_results)
+    end
+
+    it 'calls ES' do
+      expect(es_client).to receive(:get).once.with(index: endpoint, id: document_id, type: document_type).and_return(get_results)
+      partition.get(id: document_id, type: document_type)
+    end
+
+    it 'returns correct results' do
+      expect(partition.get(id: document_id, type: document_type)).to eq get_results
+    end
+  end
+
   describe '#index' do
     let(:endpoint) {config.index_endpoint(id)}
     let(:index_results) {double('Index results')}

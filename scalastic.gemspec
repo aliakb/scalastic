@@ -13,6 +13,7 @@ Gem::Specification.new do |spec|
   spec.description   = "Elasticsearch alias-based partitions for scalable indexing and searching"
   spec.homepage      = "https://github.com/aliakb/scalastic"
   spec.license       = "MIT"
+  spec.required_ruby_version = ">= 1.9"
 
   spec.files         = `git ls-files -z`.split("\x0").reject { |f| f.match(%r{^(test|spec|features)/}) }
   spec.bindir        = "exe"
