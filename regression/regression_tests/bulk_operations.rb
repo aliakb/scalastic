@@ -15,6 +15,7 @@ module RegressionTests
       partitions.prepare_index(index: 'bulk_operations')
 
       partition = partitions.create(index: 'bulk_operations', id: 1)
+      sleep 1.5
 
       partition.bulk(body: [
         {index: {_type: 'test', _id: 1, data: {subject: 'test1'}}},
@@ -40,10 +41,10 @@ module RegressionTests
         {doc: {body: 'Document 4'}}
       ])
 
-      client.indices.refresh    # Commit all pending writes
+      sleep 1.5
 
       hits = partition.search['hits']['hits'].sort{|h1, h2| h1['_id'].to_i <=> h2['_id'].to_i}
-      raise 'Unexpected count' unless hits.size == 4
+      raise "Expected 4 hits, got #{hits.size}" unless hits.size == 4
 
       expected_hits = [
         {'_index' => 'bulk_operations', '_type' => 'test', '_id' => '1', '_score' => 1.0, '_source' => {'subject' => 'test1', 'body' => 'Document 1', 'scalastic_partition_id' => 1}},
@@ -61,7 +62,7 @@ module RegressionTests
         {delete: {_type: 'test', _id: 4}},
       ])
 
-      client.indices.refresh    # Commit all pending writes
+      sleep 1.5
 
       count = partition.search(search_type: 'count')['hits']['total']
       raise 'Some documents were not removed' unless count == 0

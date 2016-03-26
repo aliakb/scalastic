@@ -18,7 +18,8 @@ module RegressionTests
 
       partition1.index id: 1, type: 'document', body: {subject: 'Subject 1'}
       partition1.index id: 2, type: 'document', body: {subject: 'Subject 2'}
-      client.indices.flush index: 'partition_operations'
+
+      sleep 1.5
 
       # Partition 2 should have no documents
       count = partition2.search(search_type: 'count', body: {query: {match_all: {}}})['hits']['total']
@@ -29,11 +30,14 @@ module RegressionTests
       raise "Expected 2 documents, got #{hits.size}" unless hits.size == 2
       h1 = hits.find{|h| h['_id'].to_i == 1}
       raise 'Document 1 cannot be found' unless h1
-      raise 'Invalid scalastic_partition_id' unless h1['_source']['scalastic_partition_id'] == 1
+      partition_id = h1['_source']['scalastic_partition_id']
+      raise "Expected: 1; got: #{partition_id}" unless partition_id == 1
 
       # Now delete something from partition 1
       partition1.delete type: 'document', id: 1
-      client.indices.flush index: 'partition_operations'
+
+      sleep 1.5
+
       count = partition1.search(search_type: 'count', body: {query: {match_all: {}}})['hits']['total']
       raise "Expected 1 document, got #{count}" unless count == 1
     end

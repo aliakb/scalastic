@@ -1,4 +1,5 @@
 require 'scalastic/es_actions_generator'
+require 'scalastic/partition_selector'
 
 module Scalastic
   class Partition
@@ -39,8 +40,8 @@ module Scalastic
     end
 
     def index(args)
-      args = {body: {}}.merge(args)
-      args[:body][config.partition_selector.to_sym] = id
+      args[:body] ||= {}
+      selector.apply_to(args[:body])
       args = args.merge(index: config.index_endpoint(id))
       es_client.index(args)
     end
@@ -58,8 +59,6 @@ module Scalastic
 
     def bulk(args)
       body = args.clone[:body] || raise(ArgumentError, 'Missing required argument :body')
-      index = config.index_endpoint(id)
-      selector = config.partition_selector
 
       new_ops = body.map{|entry| [operation_name(entry), entry]}.reduce([]){|acc, op| acc << [op.first, update_entry(acc, *op)]; acc}
       args[:body] = new_ops.map{|_op, entry| entry}
@@ -93,31 +92,22 @@ module Scalastic
       if (operation)
         op_data = entry[operation]
         op_data[:_index] = config.index_endpoint(id)
-        if (op_data[:data])
-          if (operation == :update)
-            op_data[:data][:doc] ||= {}
-            op_data[:data][:doc][config.partition_selector] = id
-          else
-            op_data[:data][config.partition_selector] = id
-          end
-        end
+        selector.apply_to(op_data[:data]) if op_data.has_key?(:data) && [:index, :create].include?(operation)
       else
         parent = acc.last
         # A previous record must be create/index/update/delete
         raise(ArgumentError, "Unexpected entry: #{entry}") unless parent && parent.first
-
-        if (parent.first == :update)
-          entry[:doc] ||= {}
-          entry[:doc][config.partition_selector] = id
-        else
-          entry[config.partition_selector] = id
-        end
+        selector.apply_to(entry) if [:index, :create].include?(parent.first)
       end
       entry
     end
 
     def delete_op(hit)
       {delete: {_index: hit['_index'], _type: hit['_type'], _id: hit['_id']}}
+    end
+
+    def selector
+      @selector ||= PartitionSelector.new(config.partition_selector, id)
     end
   end
 end

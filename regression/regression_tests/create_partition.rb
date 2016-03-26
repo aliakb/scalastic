@@ -1,6 +1,3 @@
-require 'scalastic'
-require 'elasticsearch'
-
 module RegressionTests
   module CreatePartition
     extend self
@@ -21,6 +18,7 @@ module RegressionTests
 
       # Create a partition
       partition = partitions.create index: 'create_partition', id: 1
+      sleep 1.5
       raise 'Partition was not created' unless partition.exists?
     end
   end

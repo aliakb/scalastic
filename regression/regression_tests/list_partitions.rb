@@ -14,10 +14,18 @@ module RegressionTests
       partitions = client.partitions
       partitions.prepare_index index: 'list_partitions'    # Must be called once per each index
 
+      sleep 1.5
+
       # Create a couple of partitions
       partitions.create index: 'list_partitions', id: 1
       partitions.create index: 'list_partitions', id: 2
       partitions.create index: 'list_partitions', id: 3
+
+      partitions[1].index type: 'test', body: {title: 'In partition 1'}
+      partitions[2].index type: 'test', body: {title: 'In partition 2'}
+      partitions[3].index type: 'test', body: {title: 'In partition 3'}
+
+      sleep 1.5
 
       # List all partitions
       ids = partitions.to_a.map{|p| p.id}

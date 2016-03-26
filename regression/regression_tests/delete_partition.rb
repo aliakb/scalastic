@@ -18,9 +18,12 @@ module RegressionTests
       partitions.create index: 'delete_partition', id: 1
       partitions.create index: 'delete_partition', id: 2
       partitions.create index: 'delete_partition', id: 3
+      sleep 1.5
 
       # Delete one of the partitions
       partitions.delete id: 2
+      sleep 1.5
+
       raise 'Partition still exists' if partitions[2].exists?
     end
   end

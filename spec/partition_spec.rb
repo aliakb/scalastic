@@ -171,6 +171,19 @@ describe Scalastic::Partition do
         partition.index(index_args_full)
       end
     end
+
+    context 'with complex selector' do
+      let(:partition_selector) {'parent.partition_id'}
+
+      before(:each) do
+        allow(config).to receive(:partition_selector).and_return(partition_selector)
+      end
+
+      it 'calls ES' do
+        expect(es_client).to receive(:index).once.with(index: endpoint, type: 'type', id: id, body:{parent:{partition_id: id}}).and_return(index_results)
+        partition.index(index_args_no_body)
+      end
+    end
   end
 
   describe '#delete' do
@@ -261,7 +274,7 @@ describe Scalastic::Partition do
     end
   end
 
-  describe '.bulk' do
+  describe '#bulk' do
     let(:input) {{body: [{index: {_id: 123, _type: 'test_type', data: {}}}]}}
     let(:endpoint) {config.index_endpoint(partition.id)}
     let(:partition_selector) {config.partition_selector}
@@ -291,9 +304,9 @@ describe Scalastic::Partition do
 
       it 'calls ES with correct arguments' do
         expected_es_input = {body: [
-          {create: {_index: endpoint, _type: 'test', _id: 1, data: {field1: 'value1', partition_selector => partition.id}}},
+          {create: {_index: endpoint, _type: 'test', _id: 1, data: {field1: 'value1', partition_selector.to_sym => partition.id}}},
           {create: {_index: endpoint, _type: 'test', _id: 2}},
-          {field2: 'value2', partition_selector => partition.id}
+          {field2: 'value2', partition_selector.to_sym => partition.id}
         ]}
         expect(es_client).to receive(:bulk).with(expected_es_input)
         partition.bulk(input)
@@ -305,9 +318,9 @@ describe Scalastic::Partition do
 
       it 'calls ES with correct arguments' do
         expected_es_input = {body: [
-          {index: {_index: endpoint, _type: 'test', _id: 1, data: {field1: 'value1', partition_selector => partition.id}}},
+          {index: {_index: endpoint, _type: 'test', _id: 1, data: {field1: 'value1', partition_selector.to_sym => partition.id}}},
           {index: {_index: endpoint, _type: 'test', _id: 2}},
-          {field2: 'value2', partition_selector => partition.id}
+          {field2: 'value2', partition_selector.to_sym => partition.id}
         ]}
         expect(es_client).to receive(:bulk).with(expected_es_input)
         partition.bulk(input)
@@ -319,9 +332,9 @@ describe Scalastic::Partition do
 
       it 'calls ES with correct arguments' do
         expected_es_input = {body: [
-          {update: {_index: endpoint, _type: 'test', _id: 1, data: {doc: {field1: 'value1', partition_selector => partition.id}}}},
+          {update: {_index: endpoint, _type: 'test', _id: 1, data: {doc: {field1: 'value1'}}}},
           {update: {_index: endpoint, _type: 'test', _id: 2}},
-          {doc: {field2: 'value2', partition_selector => partition.id}}
+          {doc: {field2: 'value2'}}
         ]}
         expect(es_client).to receive(:bulk).with(expected_es_input)
         partition.bulk(input)
