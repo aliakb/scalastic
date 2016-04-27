@@ -67,7 +67,7 @@ describe Scalastic::PartitionsClient do
       it 'creates a search alias' do
         expect(indices_client).to receive(:update_aliases).once do |args|
           actions = args[:body][:actions]
-          expect(actions).to include(add: {alias: "scalastic_#{partition_id}_search", index: index, filter: {term: {:scalastic_partition_id => partition_id}}})
+          expect(actions).to include(add: {alias: "scalastic_#{partition_id}_search", index: index, filter: {term: {'scalastic_partition_id' => partition_id}}})
         end
         client.create(index: index, id: partition_id)
       end
@@ -87,7 +87,7 @@ describe Scalastic::PartitionsClient do
       it 'creates a search alias' do
         expect(indices_client).to receive(:update_aliases).once do |args|
           actions = args[:body][:actions]
-          expect(actions).to include(add: {alias: "scalastic_#{partition_id}_search", index: index, routing: routing, filter: {term: {:scalastic_partition_id => partition_id}}})
+          expect(actions).to include(add: {alias: "scalastic_#{partition_id}_search", index: index, routing: routing, filter: {term: {'scalastic_partition_id' => partition_id}}})
         end
         client.create(index: index, id: partition_id, routing: routing)
       end
@@ -98,6 +98,30 @@ describe Scalastic::PartitionsClient do
           expect(actions).to include(add: {alias: "scalastic_#{partition_id}_index", index: index, routing: routing})
         end
         client.create(index: index, id: partition_id, routing: routing)
+      end
+    end
+
+    context 'with custom prefix' do
+      let(:prefix) {'test'}
+
+      before(:each) do
+        allow(config).to receive(:partition_prefix).and_return(prefix)
+      end
+
+      it 'creates a search alias' do
+        expect(indices_client).to receive(:update_aliases).once do |args|
+          actions = args[:body][:actions]
+          expect(actions).to include(add: {alias: "test_#{partition_id}_search", index: index, filter: {term: {'scalastic_partition_id' => partition_id}}})
+        end
+        client.create(index: index, id: partition_id)
+      end
+
+      it 'creates an index alias' do
+        expect(indices_client).to receive(:update_aliases).once do |args|
+          actions = args[:body][:actions]
+          expect(actions).to include(add: {alias: "test_#{partition_id}_index", index: index})
+        end
+        client.create(index: index, id: partition_id)
       end
     end
   end
@@ -232,6 +256,16 @@ describe Scalastic::PartitionsClient do
       expect(indices_client).to receive(:put_mapping).with(index: index, type: '_default_', body: {'_default_' => expected_mapping})
       expect(indices_client).to receive(:put_mapping).with(index: index, type: 'scalastic', body: {'scalastic' => expected_mapping})
       client.prepare_index(index: index)
+    end
+
+    context 'with string selector' do
+      let(:expected_mapping) {{properties: {config.partition_selector => {type: config.partition_selector_type}}}}
+
+      it 'sets the mappings' do
+        expect(indices_client).to receive(:put_mapping).with(index: index, type: '_default_', body: {'_default_' => expected_mapping})
+        expect(indices_client).to receive(:put_mapping).with(index: index, type: 'scalastic', body: {'scalastic' => expected_mapping})
+        client.prepare_index(index: index)
+      end
     end
   end
 end

@@ -238,6 +238,23 @@ actual_hits = p.search['hits']['hits']
 raise "Unexpected results!: #{actual_hits}" unless actual_hits == expected_hits
 ```
 
+### Customization
+Scalastic lets you choose prefix for partition aliases (the default value is `scalastic`):
+```ruby
+partitions.config.partition_prefix = 'my_partition'
+```
+This makes scalastic create aliases 'my_partition_123_index' and 'my_partition_123_search' for a partition 123.
+
+Also, you can customize the field that should be used for storing partition ids: 
+```ruby
+partitions.config.partition_selector = 'my_partition_id'
+```
+OR
+```ruby
+partitions.config.partition_selector = 'metadata.partition_id'
+```
+(note that the period in the partition selector indicates a nested field inside an object)
+
 ### Notes
 * Indices must be *prepared* before they can be used by Scalastic by calling "prepare" on the partitions client; doing so will create critical field mappings. Each index must be prepared only once. 
 * All hash keys in arguments must be symbols; using anything else may result in unexpected behavior.

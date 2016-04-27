@@ -1,4 +1,5 @@
 require 'scalastic'
+require 'elasticsearch'
 
 module RegressionTests
   include Enumerable
