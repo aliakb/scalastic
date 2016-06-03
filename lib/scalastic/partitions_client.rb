@@ -3,6 +3,8 @@ require "scalastic/es_actions_generator"
 
 module Scalastic
   class PartitionsClient
+    include Enumerable
+
     attr_reader(:es_client)
     attr_reader(:config)
 
@@ -37,10 +39,8 @@ module Scalastic
       Partition.new(es_client, config, id)
     end
 
-    def to_a
-      aliases = es_client.indices.get_aliases
-      partition_ids = aliases.map{|_, data| data['aliases'].keys}.flatten.map{|a| config.get_partition_id(a)}.compact.uniq
-      partition_ids.map{|id| Partition.new(es_client, config, id)}
+    def each(&_block)
+      partition_ids.each{|pid| yield Partition.new(es_client, config, pid) if block_given?}
     end
 
     def prepare_index(args)
@@ -48,6 +48,13 @@ module Scalastic
       mapping = {properties: config.partition_selector_mapping}
       es_client.indices.put_mapping(index: index, type: '_default_', body: {'_default_' => mapping})
       es_client.indices.put_mapping(index: index, type: 'scalastic', body: {'scalastic' => mapping})
+    end
+
+    private
+
+    def partition_ids
+      aliases = es_client.indices.get_aliases
+      partition_ids = aliases.map{|_, data| data['aliases'].keys}.flatten.map{|a| config.get_partition_id(a)}.compact.uniq
     end
   end
 end
