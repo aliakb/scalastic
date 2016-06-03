@@ -236,7 +236,7 @@ describe Scalastic::PartitionsClient do
     end
 
     it 'returns all aliases' do
-      expect(client.to_a.map{|p| p.id}).to eq [1,2]
+      expect(client.to_a.map{|p| p.id}).to eq %w(1 2)
     end
   end
 

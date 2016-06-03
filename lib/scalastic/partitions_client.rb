@@ -25,7 +25,8 @@ module Scalastic
     end
 
     def delete(args = {})
-      id = args[:id] || raise(ArgumentError, 'Missing required argument :id')
+      id = args[:id].to_s
+      raise(ArgumentError, 'Missing required argument :id') if id.nil? || id.empty?
       pairs = es_client.indices.get_aliases.map{|i, d| d['aliases'].keys.select{|a| config.get_partition_id(a) == id}.map{|a| [i, a]}}.flatten(1)
       unless pairs.any?
         #TODO: log a warning

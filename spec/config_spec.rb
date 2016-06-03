@@ -78,6 +78,11 @@ describe Scalastic::Config do
       expect(config.partition_selector_type).to eq 'long'
     end
 
+    it 'accepts integer type' do
+      config.partition_selector_type = 'integer'
+      expect(config.partition_selector_type).to eq 'integer'
+    end
+
     it 'rejects unknown types' do
       expect{config.partition_selector_type = 'foo'}.to raise_error(ArgumentError, 'Unsupported selector type: foo. Supported types are: (string, long)')
     end
@@ -106,7 +111,7 @@ describe Scalastic::Config do
       let(:es_alias) {"scalastic_#{id}_search"}
 
       it 'returns correct value' do
-        expect(config.get_partition_id(es_alias)).to eq id
+        expect(config.get_partition_id(es_alias)).to eq id.to_s
       end
     end
 
@@ -114,7 +119,7 @@ describe Scalastic::Config do
       let(:es_alias) {"scalastic_#{id}_index"}
 
       it 'returns correct value' do
-        expect(config.get_partition_id(es_alias)).to eq id
+        expect(config.get_partition_id(es_alias)).to eq id.to_s
       end
     end
 

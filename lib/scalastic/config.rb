@@ -24,7 +24,7 @@ module Scalastic
 
     def get_partition_id(alias_name)
       m = partition_regex.match(alias_name)
-      m && m[1].to_i
+      m && m[1]
     end
 
     def partition_prefix=(value)
@@ -39,7 +39,7 @@ module Scalastic
 
     def partition_selector_type=(value)
       value = value.to_s
-      raise(ArgumentError, "Unsupported selector type: #{value}. Supported types are: (string, long)") unless %w(string long).include?(value)
+      raise(ArgumentError, "Unsupported selector type: #{value}. Supported types are: (string, long)") unless %w(string long integer).include?(value)
       @partition_selector_type = value
     end
 
