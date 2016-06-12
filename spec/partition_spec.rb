@@ -9,6 +9,10 @@ describe Scalastic::Partition do
   let(:index_endpoint) {config.index_endpoint(id)}
   let(:search_endpoint) {config.search_endpoint(id)}
 
+  def mock_endpoint(args)
+    double('endpoint', args)
+  end
+
   describe '.new' do
     it 'rejects nil ES client' do
       expect{described_class.new(nil, config, id)}.to raise_error(ArgumentError)
@@ -381,6 +385,234 @@ describe Scalastic::Partition do
     it 'performs a search' do
       expect(es_client).to receive(:search).once.with(input.merge(index: search_endpoint, search_type: 'scan', scroll: '1m', size: 500, fields: [])).and_return(search_result)
       partition.delete_by_query(input)
+    end
+  end
+
+  describe '#get_endpoints' do
+    let(:indices_client) {mock_indices_client}
+    let(:missing_partition_response) {{'index_1' => {'aliases' => {}}}}
+    let(:read_only_response) {{'index_1'=>{'aliases'=>{"scalastic_#{id}_search"=>{'filter'=>{'term'=>{'scalastic_partition_id'=>id}}}}}}}
+    let(:single_index_response) {{'index_1'=>{'aliases'=>{"scalastic_#{id}_index"=>{}, "scalastic_#{id}_search"=>{'filter'=>{'term'=>{'scalastic_partition_id'=>id}}}}}}}
+    let(:with_routing_response) {{'index_1'=>{'aliases'=>{"scalastic_#{id}_index"=>{'index_routing'=>'123', 'search_routing'=>'123'}, "scalastic_#{id}_search"=>{'filter'=>{'term'=>{'scalastic_partition_id'=>id}}, 'index_routing'=>'123', 'search_routing'=>'123'}}}}}
+    let(:get_aliases_response) {[missing_partition_response,read_only_response,single_index_response,with_routing_response].sample}
+
+    let(:endpoints) {partition.get_endpoints}
+
+    before(:each) do
+      allow(es_client).to receive(:indices).and_return(indices_client)
+    end
+
+    def mock_indices_client
+      double('indices').tap do |ic|
+        allow(ic).to receive(:get_aliases).and_return(get_aliases_response)
+      end
+    end
+
+    it 'gets aliases from ES' do
+      expected_names = [search_endpoint, index_endpoint].join(',')
+      expect(es_client.indices).to receive(:get_aliases).once.with(name: expected_names).and_return(get_aliases_response)
+      endpoints
+    end
+
+    it 'returns endpoints' do
+      expect(endpoints).not_to be_nil
+    end
+
+    it 'returns frozen object' do
+      expect(endpoints).to be_frozen
+    end
+
+    it 'returns search endpoints in an array' do
+      expect(endpoints.search).to be_kind_of(Array)
+    end
+
+    it 'returns frozen array for search endpoints' do
+      expect(endpoints.search).to be_frozen
+    end
+
+    context 'with a missing partition' do
+      let(:get_aliases_response) {missing_partition_response}
+
+      it 'returns nil for the index endpoint' do
+        expect(endpoints.index).to be_nil
+      end
+
+      it 'returns an empty array for search endpoint' do
+        expect(endpoints.search).to be_empty
+      end
+    end
+
+    context 'with a read only partition' do
+      let(:get_aliases_response) {read_only_response}
+
+      it 'returns nil for the index endpoint' do
+        expect(endpoints.index).to be_nil
+      end
+
+      it 'returns one search endpoint' do
+        expect(endpoints.search.size).to eq 1
+      end
+
+      it 'returns correct search endpoint' do
+        se = endpoints.search.first
+        expect(se.index).to eq 'index_1'
+        expect(se.routing).to be_nil
+      end
+
+      it 'returns frozen search endpoint' do
+        expect(endpoints.search.first).to be_frozen
+      end
+    end
+
+    context 'with a single index partition' do
+      let(:get_aliases_response) {single_index_response}
+
+      it 'has correct index endpoint' do
+        expect(endpoints.index.index).to eq 'index_1'
+        expect(endpoints.index.routing).to be_nil
+      end
+
+      it 'has frozen index endpoint' do
+        expect(endpoints.index).to be_frozen
+      end
+
+      it 'has exactly one search endpoint' do
+        expect(endpoints.search.size).to eq 1
+      end
+
+      it 'has correct search endpoint' do
+        se = endpoints.search.first
+        expect(se.index).to eq 'index_1'
+        expect(se.routing).to be_nil
+      end
+    end
+
+    context 'with routing' do
+      let(:get_aliases_response) {with_routing_response}
+
+      it 'has routing on index endpoint' do
+        expect(endpoints.index.routing).to eq '123'
+      end
+
+      it 'has routing on search endpoint' do
+        expect(endpoints.search.first.routing).to eq '123'
+      end
+    end
+  end
+
+  describe '#index_to' do
+    let(:missing_partition_endpoints) {double('partitions', index: nil, search: [])}
+    let(:read_only_partition_endpoints) {double('partitions', index: nil, search: mock_endpoint(index: 'index_1'))}
+    let(:multi_index_partition_endpoints) {double('partitions', index: mock_endpoint(index: 'index_2'), search: [mock_endpoint(index: 'index_1'), mock_endpoint(index: 'index_2')])}
+
+    let(:endpoints) {[missing_partition_endpoints, read_only_partition_endpoints, multi_index_partition_endpoints].sample}
+    let(:indices_client) {mock_indices_client}
+
+    before(:each) do
+      allow(partition).to receive(:get_endpoints).and_return(endpoints)
+      allow(es_client).to receive(:indices).and_return(indices_client)
+    end
+
+    def mock_indices_client
+      double('indices').tap do |ic|
+        allow(ic).to receive(:update_aliases)
+      end
+    end
+
+    context 'to nil' do
+      context 'with editable partition' do
+        before(:each) do
+          allow(partition).to receive(:get_endpoints).and_return(multi_index_partition_endpoints)
+        end
+
+        it 'deletes the index alias' do
+          expect(indices_client).to receive(:update_aliases).once.with(body: {actions: [{remove: {index: 'index_2', alias: "scalastic_#{id}_index"}}]})
+          partition.index_to nil
+        end
+      end
+
+      context 'with missing partition' do
+        before(:each) do
+          allow(partition).to receive(:get_endpoints).once.and_return(missing_partition_endpoints)
+        end
+
+        it 'doesn\'t call ES' do
+          expect(indices_client).not_to receive(:update_aliases)
+          partition.index_to nil
+        end
+      end
+
+      context 'with read only partition' do
+        before(:each) do
+          allow(partition).to receive(:get_endpoints).once.and_return(read_only_partition_endpoints)
+        end
+
+        it 'doesn\'t call ES' do
+          expect(indices_client).not_to receive(:update_aliases)
+          partition.index_to nil
+        end
+      end
+    end
+
+    context 'setting a new index' do
+      let(:index) {'index_3'}
+
+      before(:each) do
+        allow(partition).to receive(:get_endpoints).and_return(read_only_partition_endpoints)
+      end
+
+      it 'updates ES' do
+        expect(indices_client).to receive(:update_aliases).once.with(body: {actions: [{add: {index: 'index_3', alias: "scalastic_#{id}_index"}}]})
+        partition.index_to index: index
+      end
+
+      context 'with routing' do
+        let(:routing) {123}
+
+        it 'updates ES' do
+          expect(indices_client).to receive(:update_aliases).once.with(body: {actions: [{add: {index: 'index_3', alias: "scalastic_#{id}_index", routing: routing}}]})
+          partition.index_to index: index, routing: routing
+        end
+      end
+    end
+
+    context 'when switching indices' do
+      let(:index) {'index_1'}
+
+      before(:each) do
+        allow(partition).to receive(:get_endpoints).and_return(multi_index_partition_endpoints)
+      end
+
+      it 'updates ES' do
+        expect(indices_client).to receive(:update_aliases).once.with(body: {actions: [{remove: {index: 'index_2', alias: "scalastic_#{id}_index"}}, {add: {index: 'index_1', alias: "scalastic_#{id}_index"}}]})
+        partition.index_to index: index
+      end
+    end
+  end
+
+  describe '#readonly?' do
+    let(:read_only_endpoints) {double('endpoints', index: nil, search: [mock_endpoint(index: 'index')])}
+    let(:editable_endpoints) {double('endpoints', index: mock_endpoint(index: 'index'), search: [mock_endpoint(index: 'index')])}
+    let(:endpoints) {[read_only_endpoints, editable_endpoints].sample}
+
+    before(:each) do
+      allow(partition).to receive(:get_endpoints).and_return(endpoints)
+    end
+
+    context 'with readonly partition' do
+      let(:endpoints) {read_only_endpoints}
+
+      it 'returns true' do
+        expect(partition.readonly?).to be true
+      end
+    end
+
+    context 'with editable partition' do
+      let(:endpoints) {editable_endpoints}
+
+      it 'returns false' do
+        expect(partition.readonly?).to be false
+      end
     end
   end
 end

@@ -3,6 +3,9 @@ require 'scalastic/partition_selector'
 
 module Scalastic
   class Partition
+    Endpoint = Struct.new(:index, :routing)
+    Endpoints = Struct.new(:index, :search)
+
     attr_reader(:es_client)
     attr_reader(:config)
     attr_reader(:id)
@@ -80,6 +83,32 @@ module Scalastic
 
     def inspect
       "ES partition #{id}"
+    end
+
+    def get_endpoints
+      sa = config.search_endpoint(id)
+      ia = config.index_endpoint(id)
+      aliases = es_client.indices.get_aliases name: [sa, ia].join(',')
+      sas = aliases.map{|i, d| [i, d['aliases'][sa]]}.reject{|_i, sa| sa.nil?}
+      ias = aliases.map{|i, d| [i, d['aliases'][ia]]}.reject{|_i, ia| ia.nil?}
+      Endpoints.new(
+        ias.map{|i, ia| Endpoint.new(i, ia['index_routing']).freeze}.first,
+        sas.map{|i, sa| Endpoint.new(i, sa['search_routing']).freeze}.freeze
+      ).freeze
+    end
+
+    def index_to(args)
+      ie = config.index_endpoint(id)
+      eps = get_endpoints
+      actions = []
+      actions << {remove: {index: eps.index.index, alias: ie}} if eps.index
+      actions << {add: EsActionsGenerator.new_index_alias(config, args.merge(id: id))} unless args.nil?
+      #TODO: log a warning if there're no updates
+      es_client.indices.update_aliases(body: {actions: actions}) if actions.any?
+    end
+
+    def readonly?
+      get_endpoints.index.nil?
     end
 
     private
