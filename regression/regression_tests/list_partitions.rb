@@ -28,8 +28,9 @@ module RegressionTests
       sleep 1.5
 
       # List all partitions
-      ids = partitions.to_a.map{|p| p.id}
-      raise "Unexpected partitions: #{ids}" unless ids.sort == [1,2,3]
+      ids = partitions.to_a.map{|p| p.id}.sort
+      expected_ids = %w(1 2 3)
+      raise "Expected partitions #{expected_ids}, got #{ids}" unless ids == expected_ids
     end
   end
 end
