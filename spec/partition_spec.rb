@@ -615,4 +615,55 @@ describe Scalastic::Partition do
       end
     end
   end
+
+  describe '#mget' do
+    let(:mget_results) {double('from mget')}
+    let(:ids_input) {{body: {type: 'test', ids: [1,2,3]}}}
+    let(:docs_input) {{body: {docs: [{_type: 'test', _id: 1}, {_type: 'test', _id: 2}]}}}
+    let(:input) {[ids_input, docs_input].sample}
+
+    before(:each) do
+      allow(es_client).to receive(:mget).and_return(mget_results)
+    end
+
+    it 'returns mget results' do
+      expect(partition.mget(input)).to eq mget_results
+    end
+
+    context 'with ids' do
+      let(:input) {ids_input}
+
+      it 'calls the ES' do
+        expect(es_client).to receive(:mget).once.with({index: search_endpoint}.merge(input)).and_return mget_results
+        partition.mget(input)
+      end
+    end
+
+    context 'with docs' do
+      let(:input) {docs_input}
+
+      it 'calls the ES' do
+        expect(es_client).to receive(:mget).once.with({index: search_endpoint}.merge(input)).and_return(mget_results)
+        partition.mget(input)
+      end
+    end
+  end
+
+  describe '#create' do
+    let(:create_results) {double('from create')}
+    let(:args) {{id: 1, type: 'test', body: {subject: 'This is a test'}}}
+
+    before(:each) do
+      allow(es_client).to receive(:create).and_return(create_results)
+    end
+
+    it 'returns correct results' do
+      expect(partition.create(args)).to eq create_results
+    end
+
+    it 'calls the ES' do
+      expect(es_client).to receive(:create).once.with(args.merge(index: index_endpoint)).and_return(create_results)
+      partition.create(args)
+    end
+  end
 end

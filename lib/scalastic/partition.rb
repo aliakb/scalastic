@@ -42,11 +42,23 @@ module Scalastic
       es_client.get(args)
     end
 
+    def mget(args)
+      args = args.merge(index: config.search_endpoint(id))
+      es_client.mget(args)
+    end
+
     def index(args)
       args[:body] ||= {}
       selector.apply_to(args[:body])
       args = args.merge(index: config.index_endpoint(id))
       es_client.index(args)
+    end
+
+    def create(args)
+      args[:body] ||= {}
+      selector.apply_to(args[:body])
+      args = args.merge(index: config.index_endpoint(id))
+      es_client.create(args)
     end
 
     def delete(args = {})
