@@ -666,4 +666,20 @@ describe Scalastic::Partition do
       partition.create(args)
     end
   end
+
+  describe '#scroll' do
+    let(:args) {{foo: 'bar'}}
+    let(:args_with_index) {args.merge(index: search_endpoint)}
+
+    it 'creates the scroller' do
+      expect(Scalastic::Scroller).to receive(:new).once.with(es_client, args_with_index).and_call_original
+      partition.scroll(args)
+    end
+
+    it 'returns the scroller' do
+      scroller = Scalastic::Scroller.new(es_client, args_with_index)
+      allow(Scalastic::Scroller).to receive(:new).once.and_return(scroller)
+      expect(partition.scroll(args)).to eq scroller
+    end
+  end
 end

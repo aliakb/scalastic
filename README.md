@@ -215,6 +215,11 @@ count = partition.search(search_type: 'count')['hits']['total']
 raise 'Some documents were not removed' unless count == 0
 ```
 
+### Scan/scroll
+Partitions provide `scroll` method for scrolling through results of the query.
+```ruby
+```
+
 ### Deleting by query
 Scalastic partitions support delete_by_query, but because it is no longer available in Elasticsearch core, we use our own implementation which uses scan/scroll searches and bulk operations for deletion.
 ```ruby

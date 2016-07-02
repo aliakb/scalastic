@@ -1,5 +1,6 @@
 require 'scalastic/es_actions_generator'
 require 'scalastic/partition_selector'
+require 'scalastic/scroller'
 
 module Scalastic
   class Partition
@@ -121,6 +122,11 @@ module Scalastic
 
     def readonly?
       get_endpoints.index.nil?
+    end
+
+    def scroll(args)
+      args = args.merge(index: config.search_endpoint(id))
+      Scroller.new(es_client, args)
     end
 
     private
