@@ -25,6 +25,6 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rspec", "~> 3.4"
   spec.add_development_dependency "simplecov", "~> 0.11"
 
-  spec.add_dependency "json", "~> 1.8.3"
+  spec.add_dependency "json", "~> 1.8", ">= 1.8.3"
   spec.add_dependency "elasticsearch", "~> 1.0"
 end
