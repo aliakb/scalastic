@@ -1,9 +1,11 @@
-require "scalastic/partition"
-require "scalastic/es_actions_generator"
+require 'scalastic/partition'
+require 'scalastic/es_actions_generator'
+require 'scalastic/normalizer'
 
 module Scalastic
   class PartitionsClient
     include Enumerable
+    include Normalizer
 
     attr_reader(:es_client)
     attr_reader(:config)
@@ -27,7 +29,7 @@ module Scalastic
     def delete(args = {})
       id = args[:id].to_s
       raise(ArgumentError, 'Missing required argument :id') if id.nil? || id.empty?
-      pairs = es_client.indices.get_aliases.map{|i, d| d['aliases'].keys.select{|a| config.get_partition_id(a) == id}.map{|a| [i, a]}}.flatten(1)
+      pairs = normalized(es_client.indices.get_aliases).map{|i, d| d['aliases'].keys.select{|a| config.get_partition_id(a) == id}.map{|a| [i, a]}}.flatten(1)
       unless pairs.any?
         #TODO: log a warning
         return
@@ -54,7 +56,7 @@ module Scalastic
     private
 
     def partition_ids
-      aliases = es_client.indices.get_aliases
+      aliases = normalized(es_client.indices.get_aliases)
       partition_ids = aliases.map{|_, data| data['aliases'].keys}.flatten.map{|a| config.get_partition_id(a)}.compact.uniq
     end
   end
