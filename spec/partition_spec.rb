@@ -682,4 +682,23 @@ describe Scalastic::Partition do
       expect(partition.scroll(args)).to eq scroller
     end
   end
+
+  describe '#msearch' do
+    let(:args) {{body: [{search: {query: {match_all: {}}}}, {search: {query: {term: {_all: 'test'}}}}]}}
+    let(:msearch_results) {double('results')}
+
+    before(:each) do
+      allow(es_client).to receive(:msearch).and_return(msearch_results)
+    end
+
+
+    it 'calls Elasticsearch' do
+      expect(es_client).to receive(:msearch).once.with(args.merge(index: search_endpoint)).and_return(msearch_results)
+      partition.msearch(args)
+    end
+
+    it 'returns results from msearch' do
+      expect(partition.msearch(args)).to be msearch_results
+    end
+  end
 end
