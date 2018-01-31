@@ -36,7 +36,7 @@ module RegressionTests
       # Deleting should work
       partition.delete type: 'document', id: 1
       sleep 1.5
-      count = partition.search(search_type: 'count', body: {query: {match_all: {}}})['hits']['total']
+      count = partition.search(size: 0, body: {query: {match_all: {}}})['hits']['total']
       raise "Expected 0 records, got #{count}" unless count == 0
     end
   end

@@ -82,7 +82,7 @@ describe Scalastic::Partition do
     let(:search_results) {double('Search results')}
 
     let(:search_args_empty) {{}}
-    let(:search_args_full) {{type: 'type', search_type: 'count', body: {query: {match_all: {}}}}}
+    let(:search_args_full) {{type: 'type', size: 0, body: {query: {match_all: {}}}}}
     let(:search_args) {[[search_args_empty], [search_args_full], []].sample}
 
     before(:each) do

@@ -22,7 +22,7 @@ module RegressionTests
       sleep 1.5
 
       # Partition 2 should have no documents
-      count = partition2.search(search_type: 'count', body: {query: {match_all: {}}})['hits']['total']
+      count = partition2.search(size: 0, body: {query: {match_all: {}}})['hits']['total']
       raise 'Partition 2 is not empty!' unless count == 0
 
       # Partiton 1 should contain everything we just indexed
@@ -38,7 +38,7 @@ module RegressionTests
 
       sleep 1.5
 
-      count = partition1.search(search_type: 'count', body: {query: {match_all: {}}})['hits']['total']
+      count = partition1.search(size: 0, body: {query: {match_all: {}}})['hits']['total']
       raise "Expected 1 document, got #{count}" unless count == 1
     end
   end

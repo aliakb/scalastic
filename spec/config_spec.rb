@@ -1,4 +1,5 @@
 require 'spec_helper'
+require 'SecureRandom'
 
 describe Scalastic::Config do
   let(:config) {subject}

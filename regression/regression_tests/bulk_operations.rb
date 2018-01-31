@@ -64,7 +64,7 @@ module RegressionTests
 
       sleep 1.5
 
-      count = partition.search(search_type: 'count')['hits']['total']
+      count = partition.search(size: 0)['hits']['total']
       raise 'Some documents were not removed' unless count == 0
     end
   end
