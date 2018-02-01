@@ -14,12 +14,16 @@ module Scalastic
       @partition_selector_type = 'long'
     end
 
+    def endpoints_prefix(partition_id)
+      "#{partition_prefix}_#{partition_id}_"
+    end
+
     def index_endpoint(partition_id)
-      "#{partition_prefix}_#{partition_id}_index"
+      "#{endpoints_prefix(partition_id)}index"
     end
 
     def search_endpoint(partition_id)
-      "#{partition_prefix}_#{partition_id}_search"
+      "#{endpoints_prefix(partition_id)}search"
     end
 
     def get_partition_id(alias_name)

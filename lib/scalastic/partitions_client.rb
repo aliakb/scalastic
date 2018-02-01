@@ -1,6 +1,7 @@
-require 'scalastic/partition'
+require 'scalastic/partition_factory'
 require 'scalastic/es_actions_generator'
 require 'scalastic/normalizer'
+require 'scalastic/partition_factory'
 
 module Scalastic
   class PartitionsClient
@@ -39,11 +40,13 @@ module Scalastic
     end
 
     def [](id)
-      Partition.new(es_client, config, id)
+      PartitionFactory.create_partition(es_client, config, id)
     end
 
     def each(&_block)
-      partition_ids.each{|pid| yield Partition.new(es_client, config, pid) if block_given?}
+      partition_ids.each do |pid|
+        yield PartitionFactory.create_partition(es_client, config, pid) if block_given?
+      end
     end
 
     def prepare_index(args)
